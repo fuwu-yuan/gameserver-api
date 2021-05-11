@@ -1,0 +1,4 @@
+TODO
+	route to open a game server -> launch server.jar -> save id, ip+port to db
+	route to get all currently opened game servers (browser)
+	route to close a game server -> connect to previously opened server.jar and send a shutdown request
