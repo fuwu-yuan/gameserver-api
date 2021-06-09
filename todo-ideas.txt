@@ -1,4 +1,42 @@
-TODO
-	route to open a game server -> launch server.jar -> save id, ip+port to db
-	route to get all currently opened game servers (browser)
-	route to close a game server -> connect to previously opened server.jar and send a shutdown request
+TODO CODE :
+		route to open a game server -> launch server -> save id, ip+port to db
+	OK		auth check
+	OK		input checks
+	OK		determine IP
+	OK		determine port
+			Launch server (dev server, Golang ?)
+	OK		save to DB
+
+OK		route to get all currently opened game servers (for the browser)
+OK		route to get a currently opened game server by its game + version
+OK		route to get a currently opened game server by its id
+		route to close a game server
+			connect to previously opened server and send a shutdown request ?
+			OR kill it by pid ?
+		route to register/(reset if already registered) a server (machine) to specify available port, access to launch the servers
+
+		refactor : make a single method to get a list of game server by SQL query (refactor of getGameServers & getGameServerByGameNameAndGameVersion)
+
+OK		model : rename GameServerDTO -> GameServerSlim : create a lighter GameServer : no need to send some fields to clients
+OK		model : max number of player on a server
+		password protected servers (model servers.+is_password_protected & new table w/ server_id, salted_password(string), salt(string))
+			model servers.game_name -> servers.game_code (5 alphanum code) & new table game_name <> game_code
+
+OK		responses : create a response class for the get methods (list)
+OK		responses : create a response class for the getById method
+
+		configuration file for the database
+		SQLRequest class to avoid having SQL requests as String in methods
+
+BEFORE COMMIT :
+		REMOVE ALL // TODO & // FIXME
+		Write Javadoc on all classes & methods
+		Export SQL
+_________________________________________________________________________
+TODO TEST :
+KO	Test by sending json with key not between "" -> json keys MUST be between "" -> json.org
+		
+_________________________________________________________________________
+OK		outgoing json the serverId is not send because it is not known (null) -> ServerIdService that determine the serverId before insert (was auto-increment on server_id field)
+OK		outgoing json the game(name) property when searched is not case sensitive -> change collation to 'latin1_general_cs'
+OK		outgoing json ~serverId ~gameVersion ~NMaxPlayers ~openOn ~readyForShutdown -> find a way to set the property name for json serialization -> @JsonbProperty
