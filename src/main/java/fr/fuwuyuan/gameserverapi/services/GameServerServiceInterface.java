@@ -3,8 +3,10 @@ package fr.fuwuyuan.gameserverapi.services;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 
+import fr.fuwuyuan.gameserverapi.data.GameServerSlim;
 import fr.fuwuyuan.gameserverapi.database.DatabaseSession;
 import fr.fuwuyuan.gameserverapi.database.dto.GameServerDTO;
+import fr.fuwuyuan.gameserverapi.responses.ErrorResponse;
 import fr.fuwuyuan.gameserverapi.responses.GameServerApiResponse;
 
 /**
@@ -31,9 +33,10 @@ public interface GameServerServiceInterface extends ServiceInterface {
 	 * @see {@link fr.fuwuyuan.gameserverapi.database.dto.GameServerDTO GameServerDTO}
 	 */
 	public enum GameServerError {
-		SQL_ERROR_FETCH_LOG_AND_DO_NOTHING(-101),
-		SQL_ERROR_CREATED_LOG_AND_DO_NOTHING(-102),
-		NO_GAMESERVER_CORRESPONDING_TO_GIVEN_ID(-110);
+		SQL_DATABASE_SESSION_NOT_CONNECTED(-101),
+		SQL_ERROR_FETCH_LOG_AND_DO_NOTHING(-102),
+		SQL_ERROR_CREATED_LOG_AND_DO_NOTHING(-103),
+		NO_GAMESERVER_CORRESPONDING_TO_GIVEN_ID(-111);
 
 		private int errorCode;
 
@@ -55,7 +58,7 @@ public interface GameServerServiceInterface extends ServiceInterface {
 	public enum AuthKeyError {
 		SQL_DATABASE_SESSION_NOT_CONNECTED(-201),
 		SQL_ERROR_FETCH_LOG_AND_DO_NOTHING(-202),
-		AUTH_KEY_MISMATCH_WITH_PROVIDED(-210);
+		AUTH_KEY_MISMATCH_WITH_PROVIDED(-211);
 
 		private int errorCode;
 

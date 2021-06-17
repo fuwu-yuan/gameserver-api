@@ -31,7 +31,7 @@ public class ServerIdService extends AbstractServerIdService {
 			DatabaseSession dbSession = DatabaseSession.getInstance();
 			// Check if the database session is indeed connected to the database
 			if (!dbSession.isConnected()) {
-				return null;
+				return ServerIdError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorString();
 			} else {
 				// The Database session is connected, executing the query
 				ResultSet resultSet = dbSession.executeQuery(selectSql);
@@ -55,7 +55,7 @@ public class ServerIdService extends AbstractServerIdService {
 		} catch (SQLException e) {
 			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
 			ResponseHandler.error(errorMessage, true);
-			return null;
+			return ServerIdError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorString();
 		}
 	}
 }

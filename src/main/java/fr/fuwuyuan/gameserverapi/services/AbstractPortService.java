@@ -51,11 +51,16 @@ public abstract class AbstractPortService implements PortServiceInterface {
 			er.setError(errorMessage);
 			er.setStatus(Response.Status.NOT_FOUND);
 			response = Response.status(Response.Status.NOT_FOUND).entity(er).build();
-		}	else if (portErrorCode == PortError.NO_AVAILABLE_PORT_LEFT_ON_GIVEN_IP.getErrorCode()) {
+		} else if (portErrorCode == PortError.NO_AVAILABLE_PORT_LEFT_ON_GIVEN_IP.getErrorCode()) {
 			errorMessage = "No available port left corresponding to the given IP";
 			er.setError(errorMessage);
 			er.setStatus(Response.Status.SERVICE_UNAVAILABLE);
 			response = Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(er).build();
+		} else if (portErrorCode == PortError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode()) {
+			errorMessage = "A session to the database cannot be established";
+			er.setError(errorMessage);
+			er.setStatus(Response.Status.INTERNAL_SERVER_ERROR);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(er).build();
 		} else {
 			errorMessage = "An available port cannot be determined";
 			er.setError(errorMessage);

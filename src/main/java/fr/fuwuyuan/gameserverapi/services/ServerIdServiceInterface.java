@@ -12,6 +12,26 @@ package fr.fuwuyuan.gameserverapi.services;
 public interface ServerIdServiceInterface extends ServiceInterface {
 
 	/**
+	 * This enumeration represents the possible cases that can happen while
+	 * manipulating a {@code serverId} during SQL requests.
+	 * @author julien-beguier
+	 */
+	public enum ServerIdError {
+		SQL_DATABASE_SESSION_NOT_CONNECTED("-401"),
+		SQL_ERROR_FETCH_LOG_AND_DO_NOTHING("-402");
+
+		private String errorString;
+
+		ServerIdError(String errorString) {
+			this.errorString = errorString;
+		}
+
+		public String getErrorString() {
+			return this.errorString;
+		}
+	}
+
+	/**
 	 * This method query the database to return the next available server id as
 	 * follows: <pre>MAX(server_id) + 1</pre>
 	 * @return the next available server id

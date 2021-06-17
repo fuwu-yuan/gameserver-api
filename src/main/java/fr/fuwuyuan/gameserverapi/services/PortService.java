@@ -119,7 +119,7 @@ public class PortService extends AbstractPortService {
 			DatabaseSession dbSession = DatabaseSession.getInstance();
 			// Check if the database session is indeed connected to the database
 			if (!dbSession.isConnected()) {
-				return PortError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode();
+				return PortError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode();
 			} else {
 				// The Database session is connected, executing the query
 				ResultSet resultSet = dbSession.executeQuery(selectSql);
@@ -167,7 +167,7 @@ public class PortService extends AbstractPortService {
 			DatabaseSession dbSession = DatabaseSession.getInstance();
 			// Check if the database session is indeed connected to the database
 			if (!dbSession.isConnected()) {
-				returnCode = PortError.SQL_ERROR_UPDATE_LOG_AND_DO_NOTHING.getErrorCode();
+				returnCode = PortError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode();
 			} else {
 				// The Database session is connected, executing the query
 				int requestResult = dbSession.executeUpdate(updateSql);

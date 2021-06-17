@@ -212,6 +212,11 @@ public abstract class AbstractGameServerService implements GameServerServiceInte
 			er.setError(errorMessage);
 			er.setStatus(Response.Status.NOT_FOUND);
 			return Response.status(Response.Status.NOT_FOUND).entity(er).build();
+		} else if (errorCode == GameServerError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode()) {
+			errorMessage = "A session to the database cannot be established";
+			er.setError(errorMessage);
+			er.setStatus(Response.Status.INTERNAL_SERVER_ERROR);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(er).build();
 		} else if (errorCode == GameServerError.SQL_ERROR_CREATED_LOG_AND_DO_NOTHING.getErrorCode()) {
 			errorMessage = "The game server cannot be created";
 			er.setError(errorMessage);

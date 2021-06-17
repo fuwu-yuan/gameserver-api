@@ -155,8 +155,9 @@ public class GameServerService extends AbstractGameServerService {
 
 		// ####################### DETERMINE SERVER ID
 		String serverId = idService.getNextServerId();
-		if (serverId == null)
-			return ((AbstractServerIdService) idService).nextIdCannotBeDeterminedResponse();
+		if (serverId.equals(ServerIdServiceInterface.ServerIdError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorString())
+				|| serverId.equals(ServerIdServiceInterface.ServerIdError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorString()))
+			return ((AbstractServerIdService) idService).nextIdCannotBeDeterminedResponse(serverId);
 
 		gs.setServerId(serverId);
 
@@ -197,7 +198,7 @@ public class GameServerService extends AbstractGameServerService {
 			DatabaseSession dbSession = DatabaseSession.getInstance();
 			// Check if the database session is indeed connected to the database
 			if (!dbSession.isConnected()) {
-				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
+				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode());
 			} else {
 				// The Database session is connected, executing the query
 				ResultSet resultSet = dbSession.prepareInserting(insertSql);
@@ -247,7 +248,7 @@ public class GameServerService extends AbstractGameServerService {
 			DatabaseSession dbSession = DatabaseSession.getInstance();
 			// Check if the database session is indeed connected to the database
 			if (!dbSession.isConnected()) {
-				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
+				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode());
 			} else {
 				// The Database session is connected, executing the query
 				ResultSet resultSet = dbSession.executeQuery(selectSql);
@@ -327,7 +328,7 @@ public class GameServerService extends AbstractGameServerService {
 			DatabaseSession dbSession = DatabaseSession.getInstance();
 			// Check if the database session is indeed connected to the database
 			if (!dbSession.isConnected()) {
-				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
+				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode());
 			} else {
 				// The Database session is connected, executing the query
 				ResultSet resultSet = dbSession.executeQuery(selectSql);
@@ -392,7 +393,7 @@ public class GameServerService extends AbstractGameServerService {
 				DatabaseSession dbSession = DatabaseSession.getInstance();
 				// Check if the database session is indeed connected to the database
 				if (!dbSession.isConnected()) {
-					response = gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
+					response = gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode());
 				} else {
 					// The Database session is connected, executing the query
 					int requestResult = dbSession.executeUpdate(deleteServerSql);
@@ -437,7 +438,7 @@ public class GameServerService extends AbstractGameServerService {
 			DatabaseSession dbSession = DatabaseSession.getInstance();
 			// Check if the database session is indeed connected to the database
 			if (!dbSession.isConnected()) {
-				return GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode();
+				return GameServerError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode();
 			} else {
 				// The Database session is connected, executing the query
 				ResultSet resultSet = dbSession.executeQuery(selectSql);
