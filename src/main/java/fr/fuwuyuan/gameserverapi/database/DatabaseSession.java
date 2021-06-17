@@ -1,12 +1,15 @@
 package fr.fuwuyuan.gameserverapi.database;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
 
 import fr.fuwuyuan.gameserverapi.logs.ResponseHandler;
+import fr.fuwuyuan.gameserverapi.utils.ApplicationPropertiesUtils;
 
 /**
  * This is a singleton class design to manipulate the MySQL Database.
@@ -14,17 +17,22 @@ import fr.fuwuyuan.gameserverapi.logs.ResponseHandler;
  * queries.
  * @author julien-beguier
  * @see {@link DriverManager}
+ * @see {@link ApplicationPropertiesUtils}
  */
 public class DatabaseSession {
 
-	// TODO configuration file
-	private final String			databaseAddress = "MYSQL_ADDR_TO_SET";
-	private final String			databasePort = "MYSQL_PORT_TO_SET";
-	private final String			statapiSqlDB = "MYSQL_DATABASE_TO_SET";
-	private final String			statapiSqlUser = "MYSQL_USER_TO_SET";
-	private final String			statapiSqlPassword = "MYSQL_USER_PASSWORD_TO_SET";
+	private final String			SQL_ADDR = "SQL_ADDR";
+	private final String			SQL_PORT = "SQL_PORT";
+	private final String			SQL_DATABASE = "SQL_DATABASE";
+	private final String			SQL_USER = "SQL_USER";
+	private final String			SQL_PASSWORD = "SQL_PASSWORD";
 
-	private final String			databaseConnectionInfos = databaseAddress + ":" + databasePort;
+	private String					databaseAddress = null;
+	private String					databasePort = null;
+	private String					databaseDB = null;
+	private String					databaseUser = null;
+	private String					databasePassword = null;
+	private String					databaseConnectionInfos = null;
 	private Connection				conn = null;
 
 	private static DatabaseSession	instance = null;
@@ -39,7 +47,28 @@ public class DatabaseSession {
 	}
 
 	private DatabaseSession() {
-		connect();
+		try {
+			Properties properties = ApplicationPropertiesUtils.readPropertiesFile();
+			if (properties == null) {
+				ResponseHandler.fatal("application.properties file not found! Database connection impossible!", true);
+			} else {
+				if (properties.isEmpty()) {
+					ResponseHandler.fatal(
+							"application.properties file is empty: can't find database connection infos", true);
+				} else {
+					this.databaseAddress = properties.getProperty(SQL_ADDR);
+					this.databasePort = properties.getProperty(SQL_PORT);
+					this.databaseDB = properties.getProperty(SQL_DATABASE);
+					this.databaseUser = properties.getProperty(SQL_USER);
+					this.databasePassword = properties.getProperty(SQL_PASSWORD);
+					this.databaseConnectionInfos = databaseAddress + ":" + databasePort;
+
+					connect();
+				}
+			}
+		} catch (IOException e) {
+			ResponseHandler.fatal("application.properties file cannot be closed: " + e.getMessage(), true);
+		}
 	}
 
 	/**
@@ -48,15 +77,21 @@ public class DatabaseSession {
 	 * @see {@link DriverManager#getConnection}
 	 */
 	private void connect() {
+		if (databaseAddress == null || databasePort == null ||
+			databaseUser == null || databasePassword == null) {
+			ResponseHandler.fatal("Database connection credentials not set. Abort connect()", true);
+			return;
+		}
 		try {
 			Class.forName("com.mysql.cj.jdbc.Driver");
-			this.conn = DriverManager.getConnection(
-					"jdbc:mysql://" + databaseConnectionInfos + "/" + statapiSqlDB,
-					statapiSqlUser, statapiSqlPassword);
+			this.conn = DriverManager.getConnection("jdbc:mysql://"
+			+ databaseConnectionInfos + "/" + databaseDB,
+				databaseUser, databasePassword);
 
-			ResponseHandler.info("Connected to database on : " + databaseConnectionInfos);
+			ResponseHandler.info("Connected to database on : "
+			+ databaseConnectionInfos + "/" + databaseDB, true);
 		} catch (SQLException sqlException) {
-			ResponseHandler.error("SQLException: " + sqlException.getMessage());
+			ResponseHandler.fatal("SQLException: " + sqlException.getCause(), true);
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -69,11 +104,11 @@ public class DatabaseSession {
 	 * {@code false} otherwise
 	 * @see {@link Connection#isValid}
 	 */
-	private boolean isConnected() {
+	public boolean isConnected() {
 		try {
 			return (this.conn != null && this.conn.isValid(3000));
 		} catch (SQLException sqlException) {
-			ResponseHandler.error("SQLException: " + sqlException.getMessage());
+			ResponseHandler.fatal("SQLException: " + sqlException.getMessage(), true);
 			return false;
 		}
 	}
@@ -86,12 +121,13 @@ public class DatabaseSession {
 	 */
 	private void reconnect() {
 		try {
-			this.conn.close();
+			if (this.conn != null)
+				this.conn.close();
 			this.conn = null;
 
 			connect();
 		} catch (SQLException sqlException) {
-			ResponseHandler.error("SQLException: " + sqlException.getMessage());
+			ResponseHandler.fatal("SQLException: " + sqlException.getCause(), true);
 		}
 	}
 

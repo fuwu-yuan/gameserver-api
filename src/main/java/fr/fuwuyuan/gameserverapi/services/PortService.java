@@ -99,9 +99,8 @@ public class PortService extends AbstractPortService {
 	// ##########################################################################
 
 	/**
-	 * This method fetch a record of the {@code 'ports'} table of the
-	 * {@code 'gameserver'} database using the given {@code ip} and save it
-	 * as a member of the
+	 * This method fetch a record of the {@code 'ports'} table using the
+	 * given {@code ip} and save it as a member of the
 	 * {@link AbstractPortService} class for manipulation.
 	 * @param ip as a String
 	 * @return {@code RET_OK} if successful, a {@link PortError} otherwise
@@ -117,33 +116,40 @@ public class PortService extends AbstractPortService {
 						+ "WHERE `ports`.`public_ip` = '" + ip + "'";
 
 		try {
-			ResultSet resultSet = DatabaseSession.getInstance().executeQuery(selectSql);
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				return PortError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode();
+			} else {
+				// The Database session is connected, executing the query
+				ResultSet resultSet = dbSession.executeQuery(selectSql);
 
-			// Check to see if the server machine is registered
-			if (!resultSet.next())
-				return PortError.NO_PORT_CORRESPONDING_TO_GIVEN_IP.getErrorCode();
+				// Check to see if the server machine is registered
+				if (!resultSet.next())
+					return PortError.NO_PORT_CORRESPONDING_TO_GIVEN_IP.getErrorCode();
 
-			// Read both arrays to use them later - prevent the same SQL request to be executed
-			JsonReader jsonReader = Json.createReader(new StringReader(resultSet.getString(1)));
-			this.portsUsed = jsonReader.readArray();
-			jsonReader.close();
+				// Read both arrays to use them later - prevent the same SQL request to be executed
+				JsonReader jsonReader = Json.createReader(new StringReader(resultSet.getString(1)));
+				this.portsUsed = jsonReader.readArray();
+				jsonReader.close();
 
-			jsonReader = Json.createReader(new StringReader(resultSet.getString(2)));
-			this.portsAvailable = jsonReader.readArray();
-			jsonReader.close();
+				jsonReader = Json.createReader(new StringReader(resultSet.getString(2)));
+				this.portsAvailable = jsonReader.readArray();
+				jsonReader.close();
 
-			resultSet.getStatement().close();
-			return RET_OK; // Fetch has succeeded
+				resultSet.getStatement().close();
+				return RET_OK; // Fetch has succeeded
+			}
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
 			return PortError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode();
 		}
 	}
 
 	/**
-	 * This method update a record of the {@code 'ports'} table of the
-	 * {@code 'gameserver'} database using the given {@code ip}.
+	 * This method update a record of the {@code 'ports'} table using the
+	 * given {@code ip}.
 	 * @param ip as a String
 	 * @return {@code RET_OK} if successful, a {@link PortError} otherwise
 	 * @see {@link AbstractPortService#resetPortsArrays}
@@ -158,15 +164,22 @@ public class PortService extends AbstractPortService {
 						+ "WHERE `ports`.`public_ip` = '" + ip + "'";
 
 		try {
-			int requestResult = DatabaseSession.getInstance().executeUpdate(updateSql);
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				returnCode = PortError.SQL_ERROR_UPDATE_LOG_AND_DO_NOTHING.getErrorCode();
+			} else {
+				// The Database session is connected, executing the query
+				int requestResult = dbSession.executeUpdate(updateSql);
 
-			if (requestResult == 0) // Check to see if the record exists
-				returnCode = PortError.NO_PORT_CORRESPONDING_TO_GIVEN_IP.getErrorCode();
+				if (requestResult == 0) // Check to see if the record exists
+					returnCode = PortError.NO_PORT_CORRESPONDING_TO_GIVEN_IP.getErrorCode();
 
-			returnCode = RET_OK; // Update has succeeded
+				returnCode = RET_OK; // Update has succeeded
+			}
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
 			returnCode = PortError.SQL_ERROR_UPDATE_LOG_AND_DO_NOTHING.getErrorCode();
 		} finally {
 			resetPortsArrays();

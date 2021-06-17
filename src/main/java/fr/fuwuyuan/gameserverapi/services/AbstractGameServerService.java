@@ -26,13 +26,9 @@ import fr.fuwuyuan.gameserverapi.services.GameServerServiceInterface.GameServerE
  */
 public abstract class AbstractGameServerService implements GameServerServiceInterface {
 
-	private final String headerAuthKey;
+	private static String headerAuthKey = null;
 
 	protected GameServerDTO gameServer = null;
-
-	public AbstractGameServerService() {
-		this.headerAuthKey = initHeaderAuthKey();
-	}
 
 	/**
 	 * This method is used to reset the current {@link GameServerDTO} object in order to
@@ -43,58 +39,100 @@ public abstract class AbstractGameServerService implements GameServerServiceInte
 	}
 
 	/**
-	 * This method is called one time at launch to initialize the auth_key. All
-	 * requests sent without or with an incorrect auth_key will be rejected with
-	 * a 401 Unauthorized response.
-	 * @return the auth_key stored in the {@code 'settings'} table of the
-	 * {@code 'gameserver'} database or null if it fails
+	 * This method is called the first time {@link AbstractGameServerService#isAuthorized isAuthorized()}
+	 * is called to initialize the auth_key. All requests sent without or with an
+	 * incorrect auth_key will be rejected with a 401 Unauthorized response.
+	 * @return the auth_key stored in the {@code 'settings'} table or null if it
+	 * fails
 	 */
-	private final String initHeaderAuthKey() {
+	private int initHeaderAuthKey() {
 		String sql = "SELECT `settings`.`setting_value` FROM `settings` "
 					+ "WHERE `settings`.`setting_key` = 'header_auth_key'";
-		String headerAuthKeyFromBdd = null;
 
 		try {
-			ResultSet resultSet = DatabaseSession.getInstance().executeQuery(sql);
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				return AuthKeyError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode();
+			} else {
+				// The Database session is connected, executing the query
+				ResultSet resultSet = dbSession.executeQuery(sql);
 
-			resultSet.next();
-			headerAuthKeyFromBdd = resultSet.getString(1);
-			resultSet.getStatement().close();
+				resultSet.next();
+				// Authentication key is set
+				headerAuthKey = resultSet.getString(1);
+				resultSet.getStatement().close();
 
-			return headerAuthKeyFromBdd;
+				return RET_OK;
+			}
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
-			return null;
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
+			return AuthKeyError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode();
 		}
 	}
 
 	/**
 	 * This method compares the 'good' auth_key stored in the {@code 'settings'}
-	 * table in the {@code 'gameserver'} database and the one given as parameter.
+	 * table and the one given as parameter.
 	 * @param authKey as a String
-	 * @return {@code false} if the given auth_key doesn't match the one store
-	 * in {@code 'settings'} table of the {@code 'gameserver'} database and
-	 * {@code true} otherwise
+	 * @return an error code if the auth_key could not be fetch from database or
+	 * if the given auth_key doesn't match the one store in {@code 'settings'}
+	 * table and {@code true} otherwise
+	 * @see {@link AuthKeyError}
 	 */
-	protected boolean isAuthorized(String authKey) {
-		if (authKey == null || !authKey.equals(this.headerAuthKey))
-			return false;
-		return true;
+	protected int isAuthorized(String authKey) {
+		// To only initialize it one time and not each time a request is received
+		if (headerAuthKey == null) {
+			int ret = initHeaderAuthKey();
+			if (ret != RET_OK)
+				return ret;
+		}
+
+		if (authKey == null || headerAuthKey == null || !authKey.equals(headerAuthKey))
+			return AuthKeyError.AUTH_KEY_MISMATCH_WITH_PROVIDED.getErrorCode();
+		return RET_OK;
 	}
 
 	/**
-	 * This method logs the unauthorized access attempt and build the response
-	 * with the http code 401 Unauthorized
-	 * @param callerIp as a String
+	 * This method build the response according to the {@code errorCode} which
+	 * correspond to an error that has occurred while fetching the
+	 * {@code auth_key} from the {@code 'settings'} table.</br>
+	 * @param errorCode correspond to a {@link AuthKeyError}
 	 * @return a Response object with an {@code error} field and the http code set
 	 * accordingly
 	 * @see {@link javax.ws.rs.core.Response#status}
 	 * @see {@link javax.ws.rs.core.Response.ResponseBuilder#entity}
 	 * @see {@link javax.ws.rs.core.Response.ResponseBuilder#build}
 	 */
-	protected Response unauthorizedResponse(String callerIp) {
-		ResponseHandler.error("Unauthorized access attempt from " + callerIp); // Logger ERROR
+	protected Response authKeyComparisonErrorResponse(int errorCode) {
+		String errorMessage;
+		ErrorResponse er = new ErrorResponse();
+
+		if (errorCode == AuthKeyError.AUTH_KEY_MISMATCH_WITH_PROVIDED.getErrorCode()) {
+			return unauthorizedResponse();
+		} else if (errorCode == AuthKeyError.SQL_DATABASE_SESSION_NOT_CONNECTED.getErrorCode()) {
+			errorMessage = "A session to the database cannot be established";
+			er.setError(errorMessage);
+			er.setStatus(Response.Status.INTERNAL_SERVER_ERROR);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(er).build();
+		} else {
+			errorMessage = "The auth key cannot be fetched";
+			er.setError(errorMessage);
+			er.setStatus(Response.Status.INTERNAL_SERVER_ERROR);
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(er).build();
+		}
+	}
+
+	/**
+	 * This method build the response with the http code 401 Unauthorized.
+	 * @return a Response object with an {@code error} field and the http code set
+	 * accordingly
+	 * @see {@link javax.ws.rs.core.Response#status}
+	 * @see {@link javax.ws.rs.core.Response.ResponseBuilder#entity}
+	 * @see {@link javax.ws.rs.core.Response.ResponseBuilder#build}
+	 */
+	protected Response unauthorizedResponse() {
 		String errorMessage = "Unauthorized access";
 		ErrorResponse er = new ErrorResponse(Response.Status.UNAUTHORIZED, errorMessage);
 		return Response.status(Response.Status.UNAUTHORIZED).entity(er).build();
@@ -187,10 +225,9 @@ public abstract class AbstractGameServerService implements GameServerServiceInte
 		}
 	}
 
-	public abstract Response createGameServer(String callerIp, String authKey, JsonObject postInput);
-	public abstract Response getGameServers(String callerIp, String authKey);
-	public abstract Response getGameServerById(String callerIp, String authKey, String serverId);
-	public abstract Response getGameServerByGameNameAndGameVersion(String callerIp, String authKey,
-			String gameName, String gameVersion);
-	public abstract Response shutdownGameServer(String callerIp, String authKey, String serverId);
+	public abstract Response createGameServer(String authKey, JsonObject postInput);
+	public abstract Response getGameServers(String authKey);
+	public abstract Response getGameServerById(String authKey, String serverId);
+	public abstract Response getGameServerByGameNameAndGameVersion(String authKey,String gameName, String gameVersion);
+	public abstract Response shutdownGameServer(String authKey, String serverId);
 }

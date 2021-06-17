@@ -34,8 +34,8 @@ public class GameServerController {
 			@HeaderParam("auth_key") final String authKey, final JsonObject postInput) {
 		String callerIp = requestContext.getRemoteAddr();
 
-		rh.incoming(callerIp, "POST createGameServer : " + (postInput == null ? "<input null>" : postInput.toString())); // Logger
-		return rh.outgoing(callerIp, this.service.createGameServer(callerIp, authKey, postInput));
+		rh.incoming(callerIp, "POST createGameServer : " + (postInput == null ? "<input null>" : postInput.toString()));
+		return rh.outgoing(callerIp, this.service.createGameServer(authKey, postInput));
 	}
 
 	@GET
@@ -43,8 +43,8 @@ public class GameServerController {
 			@HeaderParam("auth_key") final String authKey) {
 		String callerIp = requestContext.getRemoteAddr();
 
-		rh.incoming(callerIp, "GET getGameServers"); // Logger
-		return rh.outgoing(callerIp, this.service.getGameServers(callerIp, authKey));
+		rh.incoming(callerIp, "GET getGameServers");
+		return rh.outgoing(callerIp, this.service.getGameServers(authKey));
 	}
 
 	@GET
@@ -54,8 +54,8 @@ public class GameServerController {
 			@PathParam("server-id") final String serverId) {
 		String callerIp = requestContext.getRemoteAddr();
 
-		rh.incoming(callerIp, "GET getGameServerById : " + serverId); // Logger
-		return rh.outgoing(callerIp, this.service.getGameServerById(callerIp, authKey, serverId));
+		rh.incoming(callerIp, "GET getGameServerById : " + serverId);
+		return rh.outgoing(callerIp, this.service.getGameServerById(authKey, serverId));
 	}
 
 	@GET
@@ -66,8 +66,8 @@ public class GameServerController {
 			@PathParam("game-version") final String gameVersion) {
 		String callerIp = requestContext.getRemoteAddr();
 
-		rh.incoming(callerIp, "GET getGameServerByGameNameAndGameVersion : " + gameName + ":" + gameVersion); // Logger
-		return rh.outgoing(callerIp, this.service.getGameServerByGameNameAndGameVersion(callerIp, authKey, gameName, gameVersion));
+		rh.incoming(callerIp, "GET getGameServerByGameNameAndGameVersion : " + gameName + ":" + gameVersion);
+		return rh.outgoing(callerIp, this.service.getGameServerByGameNameAndGameVersion(authKey, gameName, gameVersion));
 	}
 
 	@DELETE
@@ -77,7 +77,7 @@ public class GameServerController {
 			@PathParam("server-id") final String serverId) {
 		String callerIp = requestContext.getRemoteAddr();
 
-		rh.incoming(callerIp, "DELETE shutdownGameServer : " + serverId); // Logger
-		return rh.outgoing(callerIp, this.service.shutdownGameServer(callerIp, authKey, serverId));
+		rh.incoming(callerIp, "DELETE shutdownGameServer : " + serverId);
+		return rh.outgoing(callerIp, this.service.shutdownGameServer(authKey, serverId));
 	}
 }

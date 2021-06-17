@@ -17,8 +17,8 @@ public interface PortServiceInterface extends ServiceInterface {
 
 	/**
 	 * This enumeration represents the possible cases that can happen while
-	 * manipulating JsonArrays, contained in the {@code 'ports'} table of
-	 * the {@code 'gameserver'} database, during SQL requests.
+	 * manipulating JsonArrays, contained in the {@code 'ports'} table, during
+	 * SQL requests.
 	 * @author julien-beguier
 	 */
 	public enum PortError {
@@ -41,8 +41,7 @@ public interface PortServiceInterface extends ServiceInterface {
 	/**
 	 * This method will try to find the first available port on the given
 	 * {@code ip}. It will do so by fetching, if necessary, the
-	 * {@link javax.json.JsonArray} from the {@code 'ports'} table of the
-	 * {@code 'gameserver'} database.
+	 * {@link javax.json.JsonArray} from the {@code 'ports'} table.
 	 * @param ip as a String for the SQL request
 	 * @return the first available port found or a {@link PortError} otherwise
 	 * @see {@link PortService#fetchPortsArrays}
@@ -57,7 +56,7 @@ public interface PortServiceInterface extends ServiceInterface {
 	 * {@code available_ports} {@link javax.json.JsonArray} and then update the
 	 * record in the database using the {@code ip}.</br>
 	 * It will do so by fetching, if necessary, the {@link javax.json.JsonArray} from
-	 * the {@code 'ports'} table of the {@code 'gameserver'} database.
+	 * the {@code 'ports'} table.
 	 * @param ip as a String for the SQL request
 	 * @param port as an int value for the SQL request
 	 * @return {@code RET_OK} if successful, a {@link PortError} otherwise
@@ -76,7 +75,7 @@ public interface PortServiceInterface extends ServiceInterface {
 	 * {@code available_ports} {@link javax.json.JsonArray} and then update the
 	 * record in the database using the {@code ip}.</br>
 	 * It will do so by fetching, if necessary, the {@link javax.json.JsonArray} from
-	 * the {@code 'ports'} table of the {@code 'gameserver'} database.
+	 * the {@code 'ports'} table.
 	 * @param ip as a String for the SQL request
 	 * @param port as an int value for the SQL request
 	 * @return {@code RET_OK} if successful, a {@link PortError} otherwise

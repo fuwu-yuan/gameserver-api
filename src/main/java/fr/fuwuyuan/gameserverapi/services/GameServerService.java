@@ -119,12 +119,12 @@ public class GameServerService extends AbstractGameServerService {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Response createGameServer(final String callerIp, final String authKey,
-			final JsonObject postInput) {
+	public Response createGameServer(final String authKey, final JsonObject postInput) {
 		// ####################### BASIC ERROR CHECKS
 		// Check the auth_key
-		if (!isAuthorized(authKey))
-			return unauthorizedResponse(callerIp);
+		int authKeyRet = isAuthorized(authKey);
+		if (authKeyRet != RET_OK)
+			return authKeyComparisonErrorResponse(authKeyRet);
 
 		// Check the postInput (Json properties)
 		if (postInput == null)
@@ -194,29 +194,36 @@ public class GameServerService extends AbstractGameServerService {
 						+ "FROM `servers`";
 
 		try {
-			ResultSet resultSet = DatabaseSession.getInstance().prepareInserting(insertSql);
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
+			} else {
+				// The Database session is connected, executing the query
+				ResultSet resultSet = dbSession.prepareInserting(insertSql);
 
-			// ############### SQL ### PREPARE THE INSERT
-			resultSet.moveToInsertRow();
-			resultSet.updateString(GameServerDTO.Fields.ServerId.getFieldName(), gs.getServerId());
-			resultSet.updateString(GameServerDTO.Fields.Ip.getFieldName(), gs.getIp());
-			resultSet.updateInt(GameServerDTO.Fields.Port.getFieldName(), gs.getPort());
-			resultSet.updateString(GameServerDTO.Fields.Name.getFieldName(), gs.getName());
-			resultSet.updateString(GameServerDTO.Fields.Description.getFieldName(), gs.getDescription());
-			resultSet.updateString(GameServerDTO.Fields.Game.getFieldName(), gs.getGame());
-			resultSet.updateString(GameServerDTO.Fields.GameVersion.getFieldName(), gs.getGameVersion());
-			resultSet.updateInt(GameServerDTO.Fields.NMaxPlayers.getFieldName(), gs.getNMaxPlayers());
-			resultSet.insertRow();
+				// ############### SQL ### PREPARE THE INSERT
+				resultSet.moveToInsertRow();
+				resultSet.updateString(GameServerDTO.Fields.ServerId.getFieldName(), gs.getServerId());
+				resultSet.updateString(GameServerDTO.Fields.Ip.getFieldName(), gs.getIp());
+				resultSet.updateInt(GameServerDTO.Fields.Port.getFieldName(), gs.getPort());
+				resultSet.updateString(GameServerDTO.Fields.Name.getFieldName(), gs.getName());
+				resultSet.updateString(GameServerDTO.Fields.Description.getFieldName(), gs.getDescription());
+				resultSet.updateString(GameServerDTO.Fields.Game.getFieldName(), gs.getGame());
+				resultSet.updateString(GameServerDTO.Fields.GameVersion.getFieldName(), gs.getGameVersion());
+				resultSet.updateInt(GameServerDTO.Fields.NMaxPlayers.getFieldName(), gs.getNMaxPlayers());
+				resultSet.insertRow();
 
-			resultSet.getStatement().close();
+				resultSet.getStatement().close();
 
-			// ####################### RETURN THE CREATED GAME SERVER (SLIM)
-			GameServerSlim gss = new GameServerSlim(gs);
-			GameServerCreatedResponse gscr = new GameServerCreatedResponse(gss);
-			return Response.status(Response.Status.CREATED).entity(gscr).build();
+				// ####################### RETURN THE CREATED GAME SERVER (SLIM)
+				GameServerSlim gss = new GameServerSlim(gs);
+				GameServerCreatedResponse gscr = new GameServerCreatedResponse(gss);
+				return Response.status(Response.Status.CREATED).entity(gscr).build();
+			}
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
 			return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_CREATED_LOG_AND_DO_NOTHING.getErrorCode());
 		}
 	}
@@ -225,9 +232,11 @@ public class GameServerService extends AbstractGameServerService {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Response getGameServers(final String callerIp, final String authKey) {
-		if (!isAuthorized(authKey))
-			return unauthorizedResponse(callerIp);
+	public Response getGameServers(final String authKey) {
+		// Check the auth_key
+		int authKeyRet = isAuthorized(authKey);
+		if (authKeyRet != RET_OK)
+			return authKeyComparisonErrorResponse(authKeyRet);
 
 		// ############### SQL ### FETCH ALL GAME SERVERS
 		String selectSql = "SELECT `server_id`, `ip`, `port`, `name`, `description`, "
@@ -235,32 +244,39 @@ public class GameServerService extends AbstractGameServerService {
 						+ "FROM `servers`";
 
 		try {
-			ResultSet resultSet = DatabaseSession.getInstance().executeQuery(selectSql);
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
+			} else {
+				// The Database session is connected, executing the query
+				ResultSet resultSet = dbSession.executeQuery(selectSql);
 
-			// ####################### BUILD THE GAME SERVER LIST
-			GameServerSlim gss = null;
-			List<GameServerSlim> servers = new ArrayList<GameServerSlim>();
-			while (resultSet.next()) {
-				gss = new GameServerSlim();
-				gss.setServerId(resultSet.getString(GameServerDTO.Fields.ServerId.getFieldName()));
-				gss.setIp(resultSet.getString(GameServerDTO.Fields.Ip.getFieldName()));
-				gss.setPort(resultSet.getInt(GameServerDTO.Fields.Port.getFieldName()));
-				gss.serName(resultSet.getString(GameServerDTO.Fields.Name.getFieldName()));
-				gss.setDescription(resultSet.getString(GameServerDTO.Fields.Description.getFieldName()));
-				gss.setGame(resultSet.getString(GameServerDTO.Fields.Game.getFieldName()));
-				gss.setGameVersion(resultSet.getString(GameServerDTO.Fields.GameVersion.getFieldName()));
-				gss.setNMaxPlayers(resultSet.getInt(GameServerDTO.Fields.NMaxPlayers.getFieldName()));
+				// ####################### BUILD THE GAME SERVER LIST
+				GameServerSlim gss = null;
+				List<GameServerSlim> servers = new ArrayList<GameServerSlim>();
+				while (resultSet.next()) {
+					gss = new GameServerSlim();
+					gss.setServerId(resultSet.getString(GameServerDTO.Fields.ServerId.getFieldName()));
+					gss.setIp(resultSet.getString(GameServerDTO.Fields.Ip.getFieldName()));
+					gss.setPort(resultSet.getInt(GameServerDTO.Fields.Port.getFieldName()));
+					gss.serName(resultSet.getString(GameServerDTO.Fields.Name.getFieldName()));
+					gss.setDescription(resultSet.getString(GameServerDTO.Fields.Description.getFieldName()));
+					gss.setGame(resultSet.getString(GameServerDTO.Fields.Game.getFieldName()));
+					gss.setGameVersion(resultSet.getString(GameServerDTO.Fields.GameVersion.getFieldName()));
+					gss.setNMaxPlayers(resultSet.getInt(GameServerDTO.Fields.NMaxPlayers.getFieldName()));
 
-				servers.add(gss);
+					servers.add(gss);
+				}
+				resultSet.getStatement().close();
+
+				// ####################### RETURN GAME SERVERS (SLIM)
+				GameServerListResponse gslr = new GameServerListResponse(servers);
+				return Response.status(Response.Status.OK).entity(gslr).build();
 			}
-			resultSet.getStatement().close();
-
-			// ####################### RETURN GAME SERVERS (SLIM)
-			GameServerListResponse gslr = new GameServerListResponse(servers);
-			return Response.status(Response.Status.OK).entity(gslr).build();
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
 			return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
 		}
 	}
@@ -269,17 +285,18 @@ public class GameServerService extends AbstractGameServerService {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Response getGameServerById(final String callerIp, final String authKey,
-			final String serverId) {
-		if (!isAuthorized(authKey))
-			return unauthorizedResponse(callerIp);
+	public Response getGameServerById(final String authKey, final String serverId) {
+		// Check the auth_key
+		int authKeyRet = isAuthorized(authKey);
+		if (authKeyRet != RET_OK)
+			return authKeyComparisonErrorResponse(authKeyRet);
 
 		// ############### SQL ### FETCH GAME SERVER BY ITS ID
 		if (null == this.gameServer) {
 			int ret = fetchGameServerById(serverId);
 			if (ret != RET_OK)
 				return gameServerCannotBeFetchOrChangedResponse(ret);
-			return getGameServerById(callerIp, authKey, serverId);
+			return getGameServerById(authKey, serverId);
 		} else {
 			// ####################### RETURN GAME SERVER (FULL)
 			GameServerDTOResponse gsr = new GameServerDTOResponse(this.gameServer);
@@ -293,10 +310,12 @@ public class GameServerService extends AbstractGameServerService {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Response getGameServerByGameNameAndGameVersion(final String callerIp,
-			final String authKey, final String gameName, final String gameVersion) {
-		if (!isAuthorized(authKey))
-			return unauthorizedResponse(callerIp);
+	public Response getGameServerByGameNameAndGameVersion(final String authKey,
+			final String gameName, final String gameVersion) {
+		// Check the auth_key
+		int authKeyRet = isAuthorized(authKey);
+		if (authKeyRet != RET_OK)
+			return authKeyComparisonErrorResponse(authKeyRet);
 
 		// ############### SQL ### FETCH GAME SERVER BY GAMENAME & GAMEVERSION
 		String selectSql = "SELECT `server_id`, `ip`, `port`, `name`, `description`, "
@@ -305,32 +324,39 @@ public class GameServerService extends AbstractGameServerService {
 						+ "WHERE `servers`.`game` LIKE '" + gameName + "' AND `servers`.`game_version` = '" + gameVersion + "'";
 
 		try {
-			ResultSet resultSet = DatabaseSession.getInstance().executeQuery(selectSql);
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
+			} else {
+				// The Database session is connected, executing the query
+				ResultSet resultSet = dbSession.executeQuery(selectSql);
 
-			// ####################### BUILD THE GAME SERVER LIST
-			GameServerSlim gss = null;
-			List<GameServerSlim> servers = new ArrayList<GameServerSlim>();
-			while (resultSet.next()) {
-				gss = new GameServerSlim();
-				gss.setServerId(resultSet.getString(GameServerDTO.Fields.ServerId.getFieldName()));
-				gss.setIp(resultSet.getString(GameServerDTO.Fields.Ip.getFieldName()));
-				gss.setPort(resultSet.getInt(GameServerDTO.Fields.Port.getFieldName()));
-				gss.serName(resultSet.getString(GameServerDTO.Fields.Name.getFieldName()));
-				gss.setDescription(resultSet.getString(GameServerDTO.Fields.Description.getFieldName()));
-				gss.setGame(resultSet.getString(GameServerDTO.Fields.Game.getFieldName()));
-				gss.setGameVersion(resultSet.getString(GameServerDTO.Fields.GameVersion.getFieldName()));
-				gss.setNMaxPlayers(resultSet.getInt(GameServerDTO.Fields.NMaxPlayers.getFieldName()));
+				// ####################### BUILD THE GAME SERVER LIST
+				GameServerSlim gss = null;
+				List<GameServerSlim> servers = new ArrayList<GameServerSlim>();
+				while (resultSet.next()) {
+					gss = new GameServerSlim();
+					gss.setServerId(resultSet.getString(GameServerDTO.Fields.ServerId.getFieldName()));
+					gss.setIp(resultSet.getString(GameServerDTO.Fields.Ip.getFieldName()));
+					gss.setPort(resultSet.getInt(GameServerDTO.Fields.Port.getFieldName()));
+					gss.serName(resultSet.getString(GameServerDTO.Fields.Name.getFieldName()));
+					gss.setDescription(resultSet.getString(GameServerDTO.Fields.Description.getFieldName()));
+					gss.setGame(resultSet.getString(GameServerDTO.Fields.Game.getFieldName()));
+					gss.setGameVersion(resultSet.getString(GameServerDTO.Fields.GameVersion.getFieldName()));
+					gss.setNMaxPlayers(resultSet.getInt(GameServerDTO.Fields.NMaxPlayers.getFieldName()));
 
-				servers.add(gss);
+					servers.add(gss);
+				}
+				resultSet.getStatement().close();
+
+				// ####################### RETURN GAME SERVERS (SLIM)
+				GameServerListResponse gslr = new GameServerListResponse(servers);
+				return Response.status(Response.Status.OK).entity(gslr).build();
 			}
-			resultSet.getStatement().close();
-
-			// ####################### RETURN GAME SERVERS (SLIM)
-			GameServerListResponse gslr = new GameServerListResponse(servers);
-			return Response.status(Response.Status.OK).entity(gslr).build();
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
 			return gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
 		}
 	}
@@ -339,16 +365,18 @@ public class GameServerService extends AbstractGameServerService {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Response shutdownGameServer(final String callerIp, final String authKey, final String serverId) {
-		if (!isAuthorized(authKey))
-			return unauthorizedResponse(callerIp);
+	public Response shutdownGameServer(final String authKey, final String serverId) {
+		// Check the auth_key
+		int authKeyRet = isAuthorized(authKey);
+		if (authKeyRet != RET_OK)
+			return authKeyComparisonErrorResponse(authKeyRet);
 
 		// ############### SQL ### FETCH GAME SERVER BY ITS ID
 		if (null == this.gameServer) {
 			int ret = fetchGameServerById(serverId);
 			if (ret != RET_OK)
 				return gameServerCannotBeFetchOrChangedResponse(ret);
-			return shutdownGameServer(callerIp, authKey, serverId);
+			return shutdownGameServer(authKey, serverId);
 		} else {
 			// ####################### SHUTDOWN THE SERVER BINARY
 			// TODO
@@ -361,17 +389,24 @@ public class GameServerService extends AbstractGameServerService {
 			String deleteServerSql = "DELETE FROM `servers` WHERE `servers`.`server_id`= '" + serverId + "'";
 
 			try {
-				int requestResult = DatabaseSession.getInstance().executeUpdate(deleteServerSql);
-
-				if (requestResult == 0) { // Check to see if the game server exists
-					response = gameServerCannotBeFetchOrChangedResponse(GameServerError.NO_GAMESERVER_CORRESPONDING_TO_GIVEN_ID.getErrorCode());
+				DatabaseSession dbSession = DatabaseSession.getInstance();
+				// Check if the database session is indeed connected to the database
+				if (!dbSession.isConnected()) {
+					response = gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
 				} else {
-					GameServerApiResponse gsaResponse = new GameServerApiResponse(Response.Status.OK, JsonValue.EMPTY_JSON_OBJECT);
-					response = Response.status(Response.Status.OK).entity(gsaResponse).build();
+					// The Database session is connected, executing the query
+					int requestResult = dbSession.executeUpdate(deleteServerSql);
+
+					if (requestResult == 0) { // Check to see if the game server exists
+						response = gameServerCannotBeFetchOrChangedResponse(GameServerError.NO_GAMESERVER_CORRESPONDING_TO_GIVEN_ID.getErrorCode());
+					} else {
+						GameServerApiResponse gsaResponse = new GameServerApiResponse(Response.Status.OK, JsonValue.EMPTY_JSON_OBJECT);
+						response = Response.status(Response.Status.OK).entity(gsaResponse).build();
+					}
 				}
 			} catch (SQLException e) {
-				String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-				ResponseHandler.error(errorMessage); // Logger ERROR
+				String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+				ResponseHandler.error(errorMessage, true);
 				response = gameServerCannotBeFetchOrChangedResponse(GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode());
 			} finally {
 				resetGameServerObj();
@@ -399,31 +434,38 @@ public class GameServerService extends AbstractGameServerService {
 						+ "WHERE `servers`.`server_id` = '" + serverId + "'";
 
 		try {
-			ResultSet resultSet = DatabaseSession.getInstance().executeQuery(selectSql);
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				return GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode();
+			} else {
+				// The Database session is connected, executing the query
+				ResultSet resultSet = dbSession.executeQuery(selectSql);
 
-			if (!resultSet.next()) { // Check to see if the game server exists
-				return GameServerError.NO_GAMESERVER_CORRESPONDING_TO_GIVEN_ID.getErrorCode();
+				if (!resultSet.next()) { // Check to see if the game server exists
+					return GameServerError.NO_GAMESERVER_CORRESPONDING_TO_GIVEN_ID.getErrorCode();
+				}
+
+				GameServerDTO gs = new GameServerDTO();
+				gs.setServerId(resultSet.getString(GameServerDTO.Fields.ServerId.getFieldName()));
+				gs.setIp(resultSet.getString(GameServerDTO.Fields.Ip.getFieldName()));
+				gs.setPort(resultSet.getInt(GameServerDTO.Fields.Port.getFieldName()));
+				gs.setName(resultSet.getString(GameServerDTO.Fields.Name.getFieldName()));
+				gs.setDescription(resultSet.getString(GameServerDTO.Fields.Description.getFieldName()));
+				gs.setGame(resultSet.getString(GameServerDTO.Fields.Game.getFieldName()));
+				gs.setGameVersion(resultSet.getString(GameServerDTO.Fields.GameVersion.getFieldName()));
+				gs.setNMaxPlayers(resultSet.getInt(GameServerDTO.Fields.NMaxPlayers.getFieldName()));
+				gs.setOpenedOn(resultSet.getString(GameServerDTO.Fields.OpenedOn.getFieldName()));
+				int rfs = resultSet.getInt(GameServerDTO.Fields.ReadyForShutdown.getFieldName());
+				gs.setReadyForShutdown(rfs == 1 ? true : false);
+
+				resultSet.getStatement().close();
+				this.gameServer = gs;
+				return RET_OK;
 			}
-
-			GameServerDTO gs = new GameServerDTO();
-			gs.setServerId(resultSet.getString(GameServerDTO.Fields.ServerId.getFieldName()));
-			gs.setIp(resultSet.getString(GameServerDTO.Fields.Ip.getFieldName()));
-			gs.setPort(resultSet.getInt(GameServerDTO.Fields.Port.getFieldName()));
-			gs.setName(resultSet.getString(GameServerDTO.Fields.Name.getFieldName()));
-			gs.setDescription(resultSet.getString(GameServerDTO.Fields.Description.getFieldName()));
-			gs.setGame(resultSet.getString(GameServerDTO.Fields.Game.getFieldName()));
-			gs.setGameVersion(resultSet.getString(GameServerDTO.Fields.GameVersion.getFieldName()));
-			gs.setNMaxPlayers(resultSet.getInt(GameServerDTO.Fields.NMaxPlayers.getFieldName()));
-			gs.setOpenedOn(resultSet.getString(GameServerDTO.Fields.OpenedOn.getFieldName()));
-			int rfs = resultSet.getInt(GameServerDTO.Fields.ReadyForShutdown.getFieldName());
-			gs.setReadyForShutdown(rfs == 1 ? true : false);
-
-			resultSet.getStatement().close();
-			this.gameServer = gs;
-			return RET_OK;
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
 			return GameServerError.SQL_ERROR_FETCH_LOG_AND_DO_NOTHING.getErrorCode();
 		}
 	}

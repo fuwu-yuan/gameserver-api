@@ -28,26 +28,33 @@ public class ServerIdService extends AbstractServerIdService {
 		String selectSql = "SELECT MAX(`servers`.`server_id`) as `server_id` FROM `servers`";
 
 		try {
-			ResultSet resultSet = DatabaseSession.getInstance().executeQuery(selectSql);
-
-			String serverId = null;
-			
-			// Check to see if there is a result
-			if (resultSet.next()) {
-				Integer maxServerIdInt = resultSet.getInt(GameServerDTO.Fields.ServerId.getFieldName());
-				// Increment server id by 1
-				maxServerIdInt += 1;
-				serverId = maxServerIdInt.toString();
+			DatabaseSession dbSession = DatabaseSession.getInstance();
+			// Check if the database session is indeed connected to the database
+			if (!dbSession.isConnected()) {
+				return null;
 			} else {
-				// There is no running game server
-				serverId =  "1";
-			}
+				// The Database session is connected, executing the query
+				ResultSet resultSet = dbSession.executeQuery(selectSql);
 
-			resultSet.getStatement().close();
-			return serverId; // Query has succeeded
+				String serverId = null;
+				
+				// Check to see if there is a result
+				if (resultSet.next()) {
+					Integer maxServerIdInt = resultSet.getInt(GameServerDTO.Fields.ServerId.getFieldName());
+					// Increment server id by 1
+					maxServerIdInt += 1;
+					serverId = maxServerIdInt.toString();
+				} else {
+					// There is no running game server
+					serverId =  "1";
+				}
+
+				resultSet.getStatement().close();
+				return serverId; // Query has succeeded
+			}
 		} catch (SQLException e) {
-			String errorMessage = "ERROR : #" + e.getErrorCode() + " " + e.getMessage();
-			ResponseHandler.error(errorMessage); // Logger ERROR
+			String errorMessage = "ERROR #" + e.getErrorCode() + " " + e.getMessage();
+			ResponseHandler.error(errorMessage, true);
 			return null;
 		}
 	}

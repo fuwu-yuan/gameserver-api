@@ -25,7 +25,8 @@ OK		model : max number of player on a server
 OK		responses : create a response class for the get methods (list)
 OK		responses : create a response class for the getById method
 
-		configuration file for the database
+OK		configuration file for the database
+OK		check if DatabaseSession is connected before doing any query
 		SQLRequest class to avoid having SQL requests as String in methods
 
 BEFORE COMMIT :
