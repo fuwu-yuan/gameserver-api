@@ -23,7 +23,7 @@ USE `testgameserver`;
 -- Table structure for table `ports`
 --
 CREATE TABLE IF NOT EXISTS `ports` (
-  `public_ip` varchar(15) COLLATE latin1_general_cs NOT NULL,
+  `public_ip` varchar(45) COLLATE latin1_general_cs NOT NULL,
   `used` json NOT NULL,
   `available` json NOT NULL,
   PRIMARY KEY (`public_ip`)
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `ports` (
 --
 CREATE TABLE IF NOT EXISTS `servers` (
   `server_id` int UNSIGNED NOT NULL,
-  `ip` varchar(15) COLLATE latin1_general_cs NOT NULL,
+  `ip` varchar(45) COLLATE latin1_general_cs NOT NULL,
   `port` smallint UNSIGNED NOT NULL,
   `name` varchar(30) CHARACTER SET latin1 COLLATE latin1_general_cs NOT NULL,
   `description` varchar(200) CHARACTER SET latin1 COLLATE latin1_general_cs DEFAULT NULL,
